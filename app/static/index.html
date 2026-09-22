@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>实验测量单位校验</title>
+<style>
+  :root {
+    --bg: #f4f6f9;
+    --card: #ffffff;
+    --ink: #1f2937;
+    --muted: #6b7280;
+    --line: #e5e7eb;
+    --brand: #2563eb;
+    --brand-dark: #1d4ed8;
+    --ok: #047857;
+    --ok-bg: #ecfdf5;
+    --err: #b91c1c;
+    --err-bg: #fef2f2;
+    --chip: #eef2ff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.55;
+  }
+  header {
+    background: linear-gradient(135deg, #1e3a8a, #2563eb);
+    color: #fff;
+    padding: 28px 20px;
+  }
+  header .wrap, main { max-width: 960px; margin: 0 auto; }
+  header h1 { margin: 0 0 6px; font-size: 24px; }
+  header p { margin: 0; opacity: .85; font-size: 14px; }
+  main { padding: 24px 20px 60px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.04);
+  }
+  .card h2 { margin: 0 0 14px; font-size: 17px; }
+  label { font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 6px; }
+  .input-row { display: flex; gap: 10px; }
+  textarea, input[type=text] {
+    width: 100%;
+    font: 15px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    resize: vertical;
+    background: #fcfcfd;
+  }
+  textarea:focus, input:focus { outline: 2px solid #bfdbfe; border-color: var(--brand); }
+  textarea.invalid { border-color: #fca5a5; background: #fff7f7; }
+  .btn {
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--ink);
+    padding: 9px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn:hover { background: #f9fafb; }
+  .btn.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .btn.primary:hover { background: var(--brand-dark); }
+  .btn.danger { color: var(--err); }
+  .btn.danger:hover { background: var(--err-bg); }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .error-box {
+    margin-top: 12px;
+    background: var(--err-bg);
+    border: 1px solid #fecaca;
+    color: var(--err);
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 14px;
+    display: none;
+  }
+  .error-box .etype {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 700;
+    background: #fee2e2;
+    border-radius: 999px;
+    padding: 1px 10px;
+    margin-right: 8px;
+  }
+  .result { display: none; margin-top: 16px; }
+  .result.show { display: block; }
+  .result .big {
+    font-size: 26px;
+    font-weight: 700;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    color: var(--ok);
+  }
+  .result dl {
+    display: grid;
+    grid-template-columns: 130px 1fr;
+    gap: 4px 14px;
+    margin: 14px 0 0;
+    font-size: 14px;
+  }
+  .result dt { color: var(--muted); }
+  .result dd { margin: 0; font-family: ui-monospace, Menlo, Consolas, monospace; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chip {
+    background: var(--chip);
+    color: #3730a3;
+    border: 0;
+    border-radius: 6px;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-family: ui-monospace, Menlo, monospace;
+    cursor: pointer;
+  }
+  .chip:hover { background: #c7d2fe; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
+  td.mono, th.mono { font-family: ui-monospace, Menlo, Consolas, monospace; }
+  .empty { color: var(--muted); text-align: center; padding: 24px 0; font-size: 14px; }
+  .row-actions button { padding: 3px 10px; font-size: 12px; }
+  .help details { margin-top: 6px; font-size: 13px; color: #374151; }
+  .help summary { cursor: pointer; color: var(--brand); font-weight: 600; }
+  .help code { background: #f3f4f6; padding: 1px 6px; border-radius: 4px; }
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #111827;
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 14px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s;
+  }
+  .toast.show { opacity: .92; }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>实验测量单位校验</h1>
+    <p>解析括号、乘除、幂与 SI 前缀，按量纲换算并以一阶误差传播计算不确定度</p>
+  </div>
+</header>
+
+<main>
+  <section class="card">
+    <h2>计算</h2>
+    <label for="expr">测量表达式</label>
+    <textarea id="expr" rows="3" spellcheck="false"
+      placeholder="例如：(9.81 ± 0.02) m/s^2 * (1.20(3) s)^2"></textarea>
+    <div class="chips" id="examples"></div>
+    <div class="toolbar">
+      <button class="btn primary" id="btn-calc">计算</button>
+      <button class="btn" id="btn-copy">复制输入</button>
+      <button class="btn" id="btn-save">保存条目</button>
+      <span style="flex:1"></span>
+      <a class="btn" href="/api/export.json" download>导出 JSON</a>
+      <a class="btn" href="/api/export.csv" download>导出 CSV</a>
+    </div>
+    <div class="error-box" id="error"></div>
+    <div class="result" id="result">
+      <div class="big" id="r-display"></div>
+      <dl>
+        <dt>SI 数值</dt><dd id="r-value"></dd>
+        <dt>绝对不确定度</dt><dd id="r-unc"></dd>
+        <dt>相对不确定度</dt><dd id="r-rel"></dd>
+        <dt>量纲</dt><dd id="r-dim"></dd>
+      </dl>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>已保存条目</h2>
+    <table>
+      <thead>
+        <tr>
+          <th class="mono">表达式</th>
+          <th>结果</th>
+          <th>量纲</th>
+          <th>时间 (UTC)</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="entries"></tbody>
+    </table>
+    <div class="empty" id="entries-empty">暂无保存条目</div>
+  </section>
+
+  <section class="card help">
+    <h2>语法说明</h2>
+    <details open>
+      <summary>支持的写法</summary>
+      <ul>
+        <li>测量值：<code>1.23 ± 0.04 m</code> 或简记 <code>1.23(4) m</code>（末位不确定度）</li>
+        <li>运算：<code>+ - * /</code>（也可用 <code>× ÷ ·</code>）、幂 <code>^</code> 或 <code>**</code>、括号 <code>()</code></li>
+        <li>SI 前缀：<code>km, mV, μs, GHz, mmol</code> 等；复合单位 <code>kg·m/s^2</code>、<code>m s^-1</code></li>
+        <li>量纲检查：加减法必须同量纲；非整数次幂不得产生非整数量纲指数</li>
+        <li>纯数字视为无量纲（<code>rad、deg</code> 亦为无量纲）</li>
+      </ul>
+    </details>
+    <details>
+      <summary>误差传播规则（一阶 / GUM）</summary>
+      <ul>
+        <li>加减：<code>u = √(u₁² + u₂²)</code></li>
+        <li>乘除：<code>u/|f| = √((u₁/x₁)² + (u₂/x₂)²)</code></li>
+        <li>幂：<code>u/|f| = |n| · u/x</code>，各输入按相互独立处理</li>
+      </ul>
+    </details>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const exprEl = $("expr"), errorEl = $("error"), resultEl = $("result");
+
+const EXAMPLES = [
+  "(9.81 ± 0.02) m/s^2 * (1.20(3) s)^2",
+  "2.50(2) km / 400(5) s",
+  "3.00(1) kg + 250(2) g",
+  "12.0 V / 470(5) Ohm",
+  "(1.0 ± 0.1) mmol/L * 0.250 L",
+  "60 km/h * 30 min",
+];
+
+function showError(type, msg) {
+  resultEl.classList.remove("show");
+  errorEl.style.display = "block";
+  errorEl.innerHTML = `<span class="etype">${type}</span>${escapeHtml(msg)}`;
+  exprEl.classList.add("invalid");
+}
+function clearError() {
+  errorEl.style.display = "none";
+  exprEl.classList.remove("invalid");
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function toast(msg) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 1800);
+}
+function fmt(x, digits = 6) {
+  if (x === null || x === undefined) return "—";
+  if (Math.abs(x) >= 1e5 || (x !== 0 && Math.abs(x) < 1e-4))
+    return x.toExponential(3);
+  return Number(x.toPrecision(digits)).toString();
+}
+
+function renderResult(r) {
+  clearError();
+  resultEl.classList.add("show");
+  $("r-display").textContent = r.display + "  [" + r.dimension_label + "]";
+  $("r-value").textContent = fmt(r.value);
+  $("r-unc").textContent = fmt(r.uncertainty) +
+    "  （" + (r.uncertainty === 0 ? "无不确定度" : "±1σ, 一阶传播") + "）";
+  $("r-rel").textContent = r.relative_uncertainty === null
+    ? "—（数值为 0）"
+    : (r.relative_uncertainty * 100).toPrecision(3) + " %";
+  $("r-dim").textContent = "(" + r.dimension.join(", ") + ")  " + r.dimension_label;
+}
+
+async function calculate() {
+  const expression = exprEl.value.trim();
+  if (!expression) { showError("parse", "请输入表达式"); return; }
+  let res;
+  try {
+    res = await fetch("/api/calculate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ expression }),
+    });
+  } catch (e) {
+    showError("network", "网络错误：" + e.message);
+    return;
+  }
+  const data = await res.json();
+  if (!res.ok) {
+    const d = data.detail?.[0] || {};
+    showError(d.type || "error", d.msg || "计算失败");
+    return;
+  }
+  renderResult(data);
+}
+
+async function saveEntry() {
+  const expression = exprEl.value.trim();
+  if (!expression) { showError("parse", "请输入表达式"); return; }
+  const res = await fetch("/api/entries", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ expression }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    const d = data.detail?.[0] || {};
+    showError(d.type || "error", d.msg || "保存失败");
+    return;
+  }
+  toast("已保存");
+  loadEntries();
+}
+
+async function loadEntries() {
+  const res = await fetch("/api/entries");
+  const rows = await res.json();
+  const tbody = $("entries");
+  tbody.innerHTML = "";
+  $("entries-empty").style.display = rows.length ? "none" : "block";
+  for (const r of rows) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td class="mono">${escapeHtml(r.expression)}</td>
+      <td class="mono">${fmt(r.value)} ± ${fmt(r.uncertainty)}</td>
+      <td class="mono">${escapeHtml(r.unit_label)}</td>
+      <td>${escapeHtml(r.created_at.replace("+00:00", "Z"))}</td>
+      <td class="row-actions">
+        <button class="btn" data-act="load">载入</button>
+        <button class="btn danger" data-act="del">删除</button>
+      </td>`;
+    tr.querySelector('[data-act=load]').onclick = () => {
+      exprEl.value = r.expression;
+      calculate();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+    tr.querySelector('[data-act=del]').onclick = async () => {
+      await fetch("/api/entries/" + r.id, { method: "DELETE" });
+      loadEntries();
+    };
+    tbody.appendChild(tr);
+  }
+}
+
+// copy input
+$("btn-copy").onclick = async () => {
+  try {
+    await navigator.clipboard.writeText(exprEl.value);
+    toast("输入已复制到剪贴板");
+  } catch {
+    exprEl.select();
+    document.execCommand("copy");
+    toast("输入已复制");
+  }
+};
+$("btn-calc").onclick = calculate;
+$("btn-save").onclick = saveEntry;
+exprEl.addEventListener("keydown", (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") calculate();
+});
+
+// example chips
+const chips = $("examples");
+EXAMPLES.forEach((ex) => {
+  const b = document.createElement("button");
+  b.className = "chip";
+  b.textContent = ex;
+  b.onclick = () => { exprEl.value = ex; calculate(); };
+  chips.appendChild(b);
+});
+
+loadEntries();
+</script>
+</body>
+</html>

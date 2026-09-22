@@ -1,0 +1,12 @@
+services:
+  web:
+    build: .
+    container_name: measurement-checker
+    ports:
+      - "8000:8000"
+    volumes:
+      - measurement-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  measurement-data:
